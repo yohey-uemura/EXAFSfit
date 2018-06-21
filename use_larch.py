@@ -88,15 +88,19 @@ def read_chi_file(file):
 
 def calcFT(k,chi,kw,k_min,k_max,wind,dk_wind):
     ft = larch_builtins._group(mylarch)
-    xftf(k,chi,group=ft,kweight=kw,kmin=k_min,kmax=k_max,_larch=mylarch)
+    xftf(k, chi, group=ft, kweight=kw,
+         kmin=k_min, kmax=k_max, window=wind, dk=dk_wind,
+         _larch=mylarch)
     return ft.r, ft.chir, ft.chir_mag, ft.chir_im
 
 def calc_rFT(r,chir,r_min,r_max,q_max,wind,dr_wind):
     chiq = larch_builtins._group(mylarch)
-    xftr(r,chir,group=chiq,qmax_out=q_max, rmin=r_min,rmax=r_max,_larch=mylarch)
+    xftr(r,chir,group=chiq,qmax_out=q_max,
+         rmin=r_min,rmax=r_max,window=wind,dr=dr_wind,
+         _larch=mylarch)
     return chiq.q, chiq.chiq_re
 
-def run_autobk(Energy,Ut,E0,Rbkg,Kweight,fit_s,fit_e,nor_aE0_s,nor_aE0_e,pre_type):
+def run_autobk(Energy,Ut,E0,Rbkg,Kweight,fit_s,fit_e,nor_aE0_s,nor_aE0_e,pre_type,KMIN,KMAX):
     exafs = larch_builtins._group(mylarch)
     ft = larch_builtins._group(mylarch)
     Pre_edge_kws = {'pre1':fit_s-E0,'pre2':fit_e-E0,'norm1':nor_aE0_s-E0,'norm2':nor_aE0_e-E0}
@@ -104,15 +108,22 @@ def run_autobk(Energy,Ut,E0,Rbkg,Kweight,fit_s,fit_e,nor_aE0_s,nor_aE0_e,pre_typ
         Pre_edge_kws['nvict']=4
     else:
         pass
-    autobk(Energy,mu=Ut,e0=E0,rbkg=Rbkg,kweight=1,pre_edge_kws=Pre_edge_kws,group=exafs,_larch=mylarch)
+    autobk(Energy,mu=Ut,e0=E0,rbkg=Rbkg,kweight=1,pre_edge_kws=Pre_edge_kws,
+           kmin = KMIN,kmax = KMAX,
+           group=exafs,_larch=mylarch)
     #print larch_builtins._groupitems(exafs,mylarch)
-    xftf(exafs.k,exafs.chi,group=ft,kweight=3,kmin=3.0,kmax=12.0,_larch=mylarch)
-    k_l = math.sqrt(0.2626*(nor_aE0_s-E0))
-    k_h = math.sqrt(0.2626*(nor_aE0_e-E0))
+    xftf(exafs.k,exafs.chi,group=ft,kweight=3,kmin=3.0,kmax=12.0,
+         dk=1,
+         window='hanning',
+         _larch=mylarch)
+    k_l = KMIN#math.sqrt(0.2626*(nor_aE0_s-E0))
+    k_h = KMAX#math.sqrt(0.2626*(nor_aE0_e-E0))
     mask = np.concatenate([np.zeros(len(exafs.k[0:find_near(exafs.k,k_l)])),
                            np.ones(len(exafs.k[find_near(exafs.k,k_l):find_near(exafs.k,k_h)+1])),
                            np.zeros(len(exafs.k[find_near(exafs.k,k_h)+1:]))])
-    return exafs.bkg, exafs.pre_edge, exafs.post_edge, exafs.chi*mask, exafs.k, ft.r, ft.chir_mag, ft.chir_im
+    print (len(mask))
+    return exafs.bkg, exafs.pre_edge, exafs.post_edge,exafs.edge_step,\
+           exafs.chi, exafs.k, ft.r, ft.chir_mag, ft.chir_im
 
 def find_near(Energy,req_Energy):
     array = np.absolute(Energy - req_Energy)
@@ -207,7 +218,10 @@ def calc_exafs_SplineSmoothing(energy,ut_, E0, fit_s,fit_e,nor_aE0_s,nor_aE0_e,p
     ft = larch_builtins._group(mylarch)
     #tft = larch_builtins._group(mylarch)
     #chi_q = larch_builtins._group(mylarch)
-    xftf(k_interp,chi_interp,group=ft,kweight=3,kmin=3.0,kmax=12.0,_larch=mylarch)
+    xftf(k_interp,chi_interp,group=ft,
+         kweight=3,kmin=3.0,kmax=12.0,
+         window='hanning',dk=1,
+         _larch=mylarch)
     post_edge_ = np.append(ut_wo_bk[0:num]/norm,spline(k[num:]))
     return bkg, pre_edge, post_edge_*norm+pre_edge, chi_interp, k_interp, ft.r, ft.chir_mag, ft.chir_im, spline.get_knots()
 
@@ -355,8 +369,10 @@ def calc_1st_derivative(energy,ut):
     return np.array(delta_ut_), np.argmax(delta_ut_)
 
 
-def calc_FT(k,chi,kmin_,kmax_,kweight_):
+def calc_FT(k,chi,kmin_,kmax_,kweight_,FTwindow,delta_k):
     ft = larch_builtins._group(mylarch)
-    xftf(k,chi,group=ft,kweight=kweight_,kmin=kmin_,kmax=kmax_,_larch=mylarch)
+    xftf(k,chi,group=ft,kweight=kweight_,
+         kmin=kmin_,kmax=kmax_,window=FTwindow,dk=delta_k,
+         _larch=mylarch)
     return ft.r, ft.chir_mag, ft.chir_im
 
