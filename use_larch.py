@@ -13,7 +13,7 @@ import scipy.integrate as INT
 import shutil
 import pandas as pd
 import larch
-from larch_plugins.xafs import autobk, xftf, xftr
+from larch_plugins.xafs import autobk, xftf, xftr, ftwindow
 from larch_plugins.io import read_ascii
 import larch.builtins as larch_builtins
 
@@ -375,4 +375,7 @@ def calc_FT(k,chi,kmin_,kmax_,kweight_,FTwindow,delta_k):
          kmin=kmin_,kmax=kmax_,window=FTwindow,dk=delta_k,
          _larch=mylarch)
     return ft.r, ft.chir_mag, ft.chir_im
+
+def calcFTwindow(x,x_min,x_max,delta_k,wtype):
+    return ftwindow(x,xmin=x_min,xmax=x_max,dk=delta_k,window=wtype)
 

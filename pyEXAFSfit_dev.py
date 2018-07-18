@@ -35,12 +35,14 @@ if sys.platform =='win32':
     from dialog_FEFF import Ui_Dialog as Ui_FEFF
     from dialog_multiFit_win import Ui_Dialog as Ui_multifit
     from UI_tableview import Ui_Form as ui_tableview
+    from dialog_Text import Ui_Dialog as ui_Text
 else:
     from UI_EXAFSfit_wTable import Ui_MainWindow
     from dialog_Fit import Ui_Dialog
     from dialog_FEFF import Ui_Dialog as Ui_FEFF
     from dialog_multiFit import Ui_Dialog as Ui_multifit
     from UI_tableview import Ui_Form as ui_tableview
+    from dialog_Text import Ui_Dialog as ui_Text
 
 import use_larch as LarchF
 import larch
@@ -59,6 +61,9 @@ class Error(object):
 
   def __init__(self, log_fname, mode='a'):
     self.log = open(log_fname, mode)
+
+def get_var_name(**kwargs):
+    return list(kwargs.keys())[0]
 
 class params:
     dir = ""
@@ -122,6 +127,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.dialog_multifit = QtWidgets.QDialog()
         self.multifit_dialog = Ui_multifit()
         self.multifit_dialog.setupUi(self.dialog_multifit)
+
+        self.dialog_suffix = QtWidgets.QDialog()
+        self.suffix_d = ui_Text()
+        self.suffix_d.setupUi(self.dialog_suffix)
 
         self.tableview = QtWidgets.QDialog()
         self.uiTableView = ui_tableview()
@@ -207,6 +216,45 @@ class MainWindow(QtWidgets.QMainWindow):
         self.Table.setColumnWidth(0,50)
         self.Table.setColumnWidth(1,80)
         self.Table.setHorizontalHeaderLabels(labels)
+
+        self.Table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+
+        def openMenu(position):
+            num_of_row = self.Table.currentRow()
+            menu = QtWidgets.QMenu()
+            actionChangeSubscript = menu.addAction("Change Subscripts of this row")
+            action = menu.exec_(self.Table.viewport().mapToGlobal(position))
+            if action == actionChangeSubscript:
+                if self.Table.item(num_of_row, 2).text() != 'EMPTY':
+                    self.dialog_suffix.exec_()
+
+        def change_suffix():
+            num_of_row = self.Table.currentRow()
+            # print num_of_row
+            for i in [3, 6, 9, 12]:
+                if self.Table.item(num_of_row, 2).text() != 'EMPTY':
+                    suffix = self.suffix_d.lineEdit.text().replace(" ", '')
+                    name = self.Table.item(num_of_row, i).text()
+                    if re.match(r"(.+)_\w+", name) != None:
+                        name_1 = re.match(r"(.+)_\w+", name).group(1)
+                        self.Table.setItem(num_of_row, i, QtWidgets.QTableWidgetItem(name_1 + '_' + suffix))
+                    elif re.match(r"(.+)_$", name) != None:
+                        self.Table.setItem(num_of_row, i, QtWidgets.QTableWidgetItem(name + suffix))
+            self.dialog_suffix.done(1)
+
+        self.suffix_d.pushButton.clicked.connect(change_suffix)
+
+        self.Table.customContextMenuRequested.connect(openMenu)
+
+
+
+        #self.Table.mousePressEvent()
+        # def self.Table.mousePressEvent(, event):
+        #     if event.button() == QtCore.Qt.RightButton:
+        #         print ("Hello")
+        #         print (self.Table.underMouse())
+
+
 
         self.multifit_dialog.tableWidget.setRowCount(22)
         rowLabel = ['DATA','USE?']
@@ -379,6 +427,14 @@ class MainWindow(QtWidgets.QMainWindow):
                     while len(self.ax.lines) > 0:
                         self.ax.lines.pop()
                 self.ax.plot(k,chi*k**float(self.u.comboBox.currentText()),color='b',linewidth=2)
+                x = np.linspace(0.0, 16.0, 161)
+                xmin = self.u.dSB_klow.value()
+                xmax = self.u.dSB_khigh.value()
+                delta_k = self.u.dB_window_k.value()
+                wtype = self.u.comboBox_2.currentText()
+                amp = (chi*k**float(self.u.comboBox.currentText())).max()*1.25
+                FTw = LarchF.calcFTwindow(x, xmin, xmax, delta_k, wtype)
+                self.ax.plot(x,FTw*amp,color='g',linewidth=2)
                 if self.u.checkBox_4.isChecked() and len(params.results_rb.buttons()) != 0:
                     plot_fitResult(params.results_rb.checkedButton(),cB,'k',self.ax,self.canvas)
             elif self.u.radioButton_2.isChecked():
@@ -390,6 +446,14 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.ax.set_xlim([0,6])
                 self.ax.plot(r,chir_mag,color='b',linewidth=2)
                 self.ax.plot(r,chir_im,color='k',linewidth=2)
+                x = np.linspace(0.0, 16.0, 161)
+                xmin = self.u.dSB_rlow.value()
+                xmax = self.u.dSB_rhigh.value()
+                delta_r = self.u.dB_window_r.value()
+                wtype = self.u.comboBox_2.currentText()
+                amp = chir_mag.max() * 1.25
+                FTw = LarchF.calcFTwindow(x, xmin, xmax, delta_r, wtype)
+                self.ax.plot(x, FTw * amp, color='g', linewidth=2)
                 if self.u.checkBox_4.isChecked() and len(params.results_rb.buttons()) != 0:
                     plot_fitResult(params.results_rb.checkedButton(),cB,'r',self.ax,self.canvas)
                 #self.canvas.draw()
@@ -401,6 +465,14 @@ class MainWindow(QtWidgets.QMainWindow):
                     while len(self.ax.lines) > 0:
                         self.ax.lines.pop()
                 self.ax.plot(q,chi_q,color='b',linewidth=2)
+                x = np.linspace(0.0, 16.0, 161)
+                xmin = self.u.dSB_klow.value()
+                xmax = self.u.dSB_khigh.value()
+                delta_q = self.u.dB_window_k.value()
+                wtype = self.u.comboBox_2.currentText()
+                amp = chi_q.max() * 1.25
+                FTw = LarchF.calcFTwindow(x, xmin, xmax, delta_q, wtype)
+                self.ax.plot(x, FTw * amp, color='g', linewidth=2)
                 if self.u.checkBox_4.isChecked():
                     plot_fitResult(params.results_rb.checkedButton(),cB,'q',self.ax,self.canvas)
             self.ax.legend(loc=1)
@@ -616,6 +688,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.u.textBrowser.append(os.path.abspath(ofile[0]))
                 checkstate()
 
+
         def checkstate():
             sign = 0
             for cB in self.GroupCheckBox.buttons():
@@ -655,6 +728,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if file[0] != '':
                 self.multifit_dialog.textBrowser.clear()
                 self.multifit_dialog.textBrowser.append(file[0])
+
 
         def plot_paramResult(DF,currentText):
             #print ("L659")
@@ -698,20 +772,23 @@ class MainWindow(QtWidgets.QMainWindow):
                 df_axis = pd.read_csv(self.u.tB_xaxis.toPlainText(),delimiter=r"\s+|\,")
                 print (df_axis.keys())
                 x_array = df_axis['x-axis'].values
+                if isinstance(x_array[0],str):
+                    self.ax2.set_xticks(range(len(x_array)))
+                    self.ax2.set_xticklabels(x_array)
                 if currentText =='R-factor':
-                    self.ax2.plot(x_array,self.df_fit[currentText].values,label=currentText,marker='o',color='r',markersize=10)
+                    self.ax2.plot(range(len(x_array)),self.df_fit[currentText].values,label=currentText,marker='o',color='r',markersize=10)
                 else:
                     if currentText in self.params_for_dR:
                         self.ax2.set_ylabel('R_0+'+currentText)
                         if 'delta('+currentText+')' in self.df_fit.keys():
-                            self.ax2.errorbar(x_array,self.df_fit[currentText].values,yerr=self.df_fit['delta('+currentText+')'].values,label='R_0+'+currentText,marker='o',color='r',markersize=10)
+                            self.ax2.errorbar(range(len(x_array)),self.df_fit[currentText].values,yerr=self.df_fit['delta('+currentText+')'].values,label='R_0+'+currentText,marker='o',color='r',markersize=10)
                         else:
-                            self.ax2.plot(x_array,self.df_fit[currentText].values,label='R_0+'+currentText,marker='o',color='r',markersize=10)
+                            self.ax2.plot(range(len(x_array)),self.df_fit[currentText].values,label='R_0+'+currentText,marker='o',color='r',markersize=10)
                     else:
                         if 'delta('+currentText+')' in self.df_fit.keys():
-                            self.ax2.errorbar(x_array,self.df_fit[currentText].values,yerr=self.df_fit['delta('+currentText+')'].values,label=currentText,marker='o',color='r',markersize=10)
+                            self.ax2.errorbar(range(len(x_array)),self.df_fit[currentText].values,yerr=self.df_fit['delta('+currentText+')'].values,label=currentText,marker='o',color='r',markersize=10)
                         else:
-                            self.ax2.errorbar(x_array,self.df_fit[currentText].values,yerr=self.df_fit['delta('+currentText+')'].values,label=currentText,marker='o',color='r',markersize=10)
+                            self.ax2.errorbar(range(len(x_array)),self.df_fit[currentText].values,yerr=self.df_fit['delta('+currentText+')'].values,label=currentText,marker='o',color='r',markersize=10)
             else:
                 x_array = range(1,len(self.df_fit['data'].values)+1)
                 if currentText =='R-factor':
@@ -892,6 +969,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.dialog.show()
         self.show()
 
+    # def mousePressEvent(self.Table, event):
+    #     if event.button() == QtCore.Qt.RightButton:
+    #         print ("Hello")
+    #         print (self.Table.underMouse())
+
+
     def timerEvent(self,e):
         def setFigure(widget,str_xlabel,str_ylabel):
             grid = widget.layout()
@@ -947,7 +1030,7 @@ class MainWindow(QtWidgets.QMainWindow):
             for term in self.df_fit.columns.values:
                 if term == 'R-factor':
                     self.u.combo_fitParam.insertItem(0,term)
-                if re.search(r"(\+\/\-|delta\(.+\)|data)",term) == None:
+                elif re.search(r"(\+\/\-|delta\(.+\)|data)",term) == None:
                     self.u.combo_fitParam.addItem(term)
             if not self.u.pB_setXaxis.isEnabled():
                 self.u.pB_setXaxis.setEnabled(True)
@@ -1000,7 +1083,9 @@ class MainWindow(QtWidgets.QMainWindow):
                     if re.match("delta.*",term) != None:
                         pass
                     elif getattr(self.fitParams,term).vary == True:
-                        print (str(getattr(self.fitParams,term).uvalue))
+                        # print ("####Extra Variable#####")
+                        # print ("uvalue:" + str(getattr(self.fitParams,term).uvalue))
+                        # print("stderr:" + str(getattr(self.fitParams, term).stderr))
                         t_array = str(getattr(self.fitParams,term).uvalue).split('+/-')
                         self.Reserver.loc[key,term] = t_array[0]
                         self.Reserver.loc[key,'delta('+term+')'] = t_array[1]
@@ -1024,134 +1109,121 @@ class MainWindow(QtWidgets.QMainWindow):
                                         if term == self.Table.item(i,9).text():
                                             # print self.Table.item(i,9).text()
                                             print (self.Table.item(i,2).text())
-                                            self.Reserver.loc[key,term] = str(getattr(self.fitParams,term).value + float(re.search("\w+\=(\d+\.\d+)",self.Table.item(i,2).text()).group(1)))
+                                            self.Reserver.loc[key,term] = getattr(self.fitParams,term).value + float(re.search("\w+\=(\d+\.\d+)",self.Table.item(i,2).text()).group(1))
                                             break
-                                    self.Reserver.loc[key,'delta('+term+')'] = '0.000'
+                                    self.Reserver.loc[key,'delta('+term+')'] = 0.000
                                     # self.Reserver.loc[key,term] = str(getattr(self.fitParams,term).value)
                                 else:
-                                    self.Reserver.loc[key,term] = str(getattr(self.fitParams,term).value)
-                                    self.Reserver.loc[key,'delta('+term+')'] = '0.000'
+                                    self.Reserver.loc[key,term] = getattr(self.fitParams,term).value
+                                    self.Reserver.loc[key,'delta('+term+')'] = 0.000
                             # print term
                             # print str(getattr(self.fitParams,term).value)
                             # print str(getattr(self.fitParams,term).uvalue)
                             else:
                                 if term in self.params_for_dR:
                                     t_array = str(getattr(self.fitParams,term).uvalue).split('+/-')
-                                    self.Reserver.loc[key,term] = t_array[0]
+                                    self.Reserver.loc[key,term] = float(t_array[0])
                                     for i in range(0,20):
                                         if term == self.Table.item(i,9).text():
                                             # print self.Table.item(i,9).text()
                                             print (self.Table.item(i,2).text())
-                                            self.Reserver.loc[key,term] = str(float(t_array[0]) + float(re.search("\w+\=(\d+\.\d+)",self.Table.item(i,2).text()).group(1)))
+                                            self.Reserver.loc[key,term] = float(t_array[0]) + float(re.search("\w+\=(\d+\.\d+)",self.Table.item(i,2).text()).group(1))
                                             break
                                         else:
                                             pass
-                                    self.Reserver.loc[key,'delta('+term+')'] = t_array[1]
+                                    self.Reserver.loc[key,'delta('+term+')'] = float(t_array[1])
                                 else:
                                     t_array = str(getattr(self.fitParams,term).uvalue).split('+/-')
-                                    self.Reserver.loc[key,term] = t_array[0]
-                                    self.Reserver.loc[key,'delta('+term+')'] = t_array[1]
+                                    self.Reserver.loc[key,term] = float(t_array[0])
+                                    self.Reserver.loc[key,'delta('+term+')'] = float(t_array[1])
                         elif getattr(self.fitParams,term).vary == False:
                             if getattr(self.fitParams,term).expr != None:
-                                #i = 0
                                 str_eqn = getattr(self.fitParams,term).expr
-                                sign = 1
-                                while sign:
-                                    t_array = re.split('\+|\*|\/|\-|\(|\)',str_eqn)
-                                    for sub_term in t_array:
-                                        params_def_copy = self.params_def[:]
-                                        params_def_copy.remove(term)
-                                        re_express = r"(\+|\*|\/|\-|\(|\)|\s+)?"+"("+re.escape(sub_term.replace(" ",''))+")"+"(\+|\*|\/|\-|\(|\)|\s+)?"
-                                        if sub_term.replace(" ",'') in params_def_copy and re.search(re_express,str_eqn):
-                                            g0 = re.search(re_express,str_eqn).groups()[0]
-                                            g1 = re.search(re_express,str_eqn).groups()[1]
-                                            g2 = re.search(re_express,str_eqn).groups()[2]
-                                            r_stirng = ""
-                                            if g0 != None:
-                                                r_stirng += g0
-                                            r_stirng += getattr(self.fitParams,g1).expr
-                                            if g2 != None:
-                                                r_stirng += g2
-                                            str_eqn = re.sub(re_express,r_stirng,str_eqn)
-                                    t_array = re.split('\+|\*|\/|\-|\(|\)',str_eqn)
-                                    sign = 0
-                                    for sub_term in t_array:
-                                        if sub_term.replace(" ",'') in self.params_def:
-                                            sign = 1
+                                for nval in self.extra_params:
+                                    if not "delta" in nval:
+                                        if getattr(self.fitParams,nval).uvalue is None:
+                                            str_eqn = str_eqn.replace(nval,"self.fitParams."+nval+'.value')
                                         else:
-                                            sign = 0
-                                t_array = re.split('\+|\*|\/|\-|\(|\)',str_eqn)
-                                for sub_term in t_array:
-                                    re_express = r"(\+|\*|\/|\-|\(|\)|\s+)?"+"("+re.escape(sub_term.replace(" ",''))+")"+"(\+|\*|\/|\-|\(|\)|\s+)?"
-                                    if sub_term.replace(" ",'') in self.params_guess[:]+self.params_set[:] and re.search(re_express,str_eqn):
-                                        g0 = re.search(re_express,str_eqn).groups()[0]
-                                        g1 = re.search(re_express,str_eqn).groups()[1]
-                                        g2 = re.search(re_express,str_eqn).groups()[2]
-                                        r_stirng = ""
-                                        if g0 != None:
-                                            r_stirng += g0
-                                        r_stirng += "self.fitParams."+g1+'.value'
-                                        if g2 != None:
-                                            r_stirng += g2
-                                        str_eqn = re.sub(re_express,r_stirng,str_eqn)
-                                # for val in self.extra_params:
-                                #     if not 'delta' in val:
-                                #         str_eqn = str_eqn.replace(val, 'self.fitParams.' + val + '.value')
-                                # if term in self.params_for_N:
-                                #     for val in self.params_for_N:
-                                #         if val != term and (not 'delta' in val) and getattr(self.fitParams,val).expr == None:
-                                #             str_eqn = str_eqn.replace(val, 'self.fitParams.' + val + '.value')
+                                            str_eqn = str_eqn.replace(nval, "self.fitParams." + nval + '.uvalue')
+                                #i = 0
+                                # str_eqn = getattr(self.fitParams,term).expr
+                                # sign = 1
+                                # while sign:
+                                #     t_array = re.split('\+|\*|\/|\-|\(|\)',str_eqn)
+                                #     for sub_term in t_array:
+                                #         params_def_copy = self.params_def[:]
+                                #         params_def_copy.remove(term)
+                                #         re_express = r"(\+|\*|\/|\-|\(|\)|\s+)?"+"("+re.escape(sub_term.replace(" ",''))+")"+"(\+|\*|\/|\-|\(|\)|\s+)?"
+                                #         if sub_term.replace(" ",'') in params_def_copy and re.search(re_express,str_eqn):
+                                #             g0 = re.search(re_express,str_eqn).groups()[0]
+                                #             g1 = re.search(re_express,str_eqn).groups()[1]
+                                #             g2 = re.search(re_express,str_eqn).groups()[2]
+                                #             r_stirng = ""
+                                #             if g0 != None:
+                                #                 r_stirng += g0
+                                #             r_stirng += getattr(self.fitParams,g1).expr
+                                #             if g2 != None:
+                                #                 r_stirng += g2
+                                #             str_eqn = re.sub(re_express,r_stirng,str_eqn)
+                                #     t_array = re.split('\+|\*|\/|\-|\(|\)',str_eqn)
+                                #     sign = 0
+                                #     for sub_term in t_array:
+                                #         if sub_term.replace(" ",'') in self.params_def:
+                                #             sign = 1
                                 #         else:
-                                #             pass
-                                # # elif term in self.params_for_N:
-                                # #     for val in self.params_for_N:
-                                # #         if val != term and (not 'delta' in val) and getattr(self.fitParams,val).expr == None:
-                                # #             str_eqn = str_eqn.replace(val,'self.fitParams.'+val+'.value')
-                                # #         else:
-                                # #             pass
-                                # elif term in self.params_for_dE:
-                                #     for val in self.params_for_dE:
-                                #         if val != term and (not 'delta' in val) and getattr(self.fitParams,val).expr == None:
-                                #             str_eqn = str_eqn.replace(val, 'self.fitParams.' + val + '.value')
-                                #         else:
-                                #             pass
-                                # elif term in self.params_for_dR:
-                                #     for val in self.params_for_dR:
-                                #         if val != term and (not 'delta' in val) and getattr(self.fitParams,val).expr == None:
-                                #             str_eqn = str_eqn.replace(val, 'self.fitParams.' + val + '.value')
-                                #         else:
-                                #             pass
-                                # elif term in self.params_for_ss:
-                                #     for val in self.params_for_ss:
-                                #         if val != term and (not 'delta' in val) and getattr(self.fitParams,val).expr == None:
-                                #             str_eqn = str_eqn.replace(val, 'self.fitParams.' + val + '.value')
-                                #         else:
-                                #             pass
+                                #             sign = 0
+                                # t_array = re.split('\+|\*|\/|\-|\(|\)',str_eqn)
+                                # for sub_term in t_array:
+                                #     re_express = r"(\+|\*|\/|\-|\(|\)|\s+)?"+"("+re.escape(sub_term.replace(" ",''))+")"+"(\+|\*|\/|\-|\(|\)|\s+)?"
+                                #     if sub_term.replace(" ",'') in self.params_guess[:]+self.params_set[:] and re.search(re_express,str_eqn):
+                                #         g0 = re.search(re_express,str_eqn).groups()[0]
+                                #         g1 = re.search(re_express,str_eqn).groups()[1]
+                                #         g2 = re.search(re_express,str_eqn).groups()[2]
+                                #         r_stirng = ""
+                                #         if g0 != None:
+                                #             r_stirng += g0
+                                #         r_stirng += "self.fitParams."+g1+'.value'
+                                #         if g2 != None:
+                                #             r_stirng += g2
+                                #         str_eqn = re.sub(re_express,r_stirng,str_eqn)
+
                                 if term in self.params_for_dR:
                                     # t_array = str(getattr(self.fitParams,term).uvalue).split('+/-')
                                     # self.Reserver.loc[key,term] = t_array[0]
                                     for i in range(0,20):
                                         if term == self.Table.item(i,9).text():
-                                            self.Reserver.loc[key,term] = str(float(re.search("\w+\=(\d+\.\d+)",self.Table.item(i,2).text()).group(1)) + eval(str_eqn))
+                                            # eval(str_eqn)
+                                            if '+/-' in str(eval(str_eqn)):
+                                                self.Reserver.loc[key, term] = float(re.search("\w+\=(\d+\.\d+)", self.Table.item(i, 2).text()).group(1)) + \
+                                                                                   float(str(eval(str_eqn)).split('+/-')[0])
+                                                self.Reserver.loc[key, 'delta(' + term + ')'] = float(str(eval(str_eqn)).split('+/-')[1])
+                                            else:
+                                                self.Reserver.loc[key, term] = float(re.search("\w+\=(\d+\.\d+)", self.Table.item(i, 2).text()).group(1)) + \
+                                                                                   float(str(eval(str_eqn)).split('+/-')[0])
+                                                self.Reserver.loc[key, 'delta(' + term + ')'] = 0.000
                                             break
                                         else:
                                             pass
                                 else:
-                                    print (str_eqn)
-                                    self.Reserver.loc[key,term] = eval(str_eqn)
+                                    print (eval(str_eqn))
+                                    self.Reserver.loc[key, term] = float(str(eval(str_eqn)).split('+/-')[0])
+                                    self.Reserver.loc[key, 'delta(' + term + ')'] = float(str(eval(str_eqn)).split('+/-')[1])
                             else:
                                 if term in self.params_for_dR:
                                     t_array = str(getattr(self.fitParams,term).uvalue).split('+/-')
-                                    self.Reserver.loc[key,term] = t_array[0]
+                                    self.Reserver.loc[key,term] = float(t_array[0])
                                     for i in range(0,20):
                                         if term == self.Table.item(i,9).text():
                                             print (re.search("\w+\=(\d+\.\d+)",self.Table.item(i,2).text()).group(1))
-                                            self.Reserver.loc[key,term] = str(float(re.search("\w+\=(\d+\.\d+)",self.Table.item(i,2).text()).group(1)) + getattr(self.fitParams,term).value)
+                                            self.Reserver.loc[key,term] = float(re.search("\w+\=(\d+\.\d+)",self.Table.item(i,2).text()).group(1)) +\
+                                                                              getattr(self.fitParams,term).value
+                                            self.Reserver.loc[key, 'delta(' + term + ')'] = 0.000
                                             break
                                         else:
                                             pass
                                 else:
                                     self.Reserver.loc[key,term] = getattr(self.fitParams,term).value
+                                    self.Reserver.loc[key, 'delta(' + term + ')'] = 0.000
                 logfile = open(self.path_to_log+re.search("\d+\:(.+)\.\w+$",key).group(1)+'.log','w')
                 #if isinstance(line, unicode):
                 #    logfile.write(line.encode('utf-8'))
@@ -1346,8 +1418,9 @@ class MainWindow(QtWidgets.QMainWindow):
                     # or_dict = OrderedDict(eval('['+txt+']'))
                     for term in tlist:
                         t_array = term.split('=')
-                        param_name = t_array[0].replace(" ","").replace("'","")
-                        param_condition = t_array[1].replace(" ","").replace('[',"").replace(']',"").replace('(',"").replace(')',"").split(',')
+                        param_name = t_array[0].replace(" ","")
+                        param_condition = t_array[1][1:-1].replace(" ","").replace('(',"").replace(')',"").split(',')
+                        print(param_condition)
                         print (param_condition)
                         if len(param_condition) == 3:
                             p_min = param_condition[2].split(':')[0]
@@ -1374,6 +1447,7 @@ class MainWindow(QtWidgets.QMainWindow):
                             elif param_condition[1].replace("'","") == 'set':
                                 setattr(self.fitParams,param_name,larchfit.param(float(param_condition[0])))
                                 self.extra_params.append(param_name)
+                                self.extra_params.append('delta(' + param_name + ')')
                 print (self.extra_params)
                 self.pathlist = []
                 self.paramNames = []
@@ -1394,16 +1468,17 @@ class MainWindow(QtWidgets.QMainWindow):
                         State_for_N = self.Table.cellWidget(index_,4)
                         #print State_for_N
                         Value_for_N = self.Table.item(index_,5).text()
+                        # self.paramNames += [Name_for_N, 'delta(' + Name_for_N + ')']
                         #print Value_for_N
                         if State_for_N.currentText() == 'guess':
                             setattr(self.fitParams,Name_for_N,larchfit.guess(float(Value_for_N)))
                             self.paramNames +=[Name_for_N,'delta('+Name_for_N+')']
                         elif State_for_N.currentText() == 'set':
                             setattr(self.fitParams,Name_for_N,larchfit.param(float(Value_for_N)))
-                            self.paramNames +=[Name_for_N]
+                            self.paramNames +=[Name_for_N,'delta('+Name_for_N+')']
                         elif State_for_N.currentText() == 'def':
                             setattr(self.fitParams,Name_for_N,larchfit.param(expr=Value_for_N))
-                            self.paramNames +=[Name_for_N]
+                            self.paramNames +=[Name_for_N,'delta('+Name_for_N+')']
                         setattr(self.fitParams,'degen_path_'+str(index_),path.degen)
                         #setattr(self.fitParams,'net_'+Name_for_N,larchfit.param(expr=Value_for_N+'*'+str(self.fit_dialog.doubleSpinBox.value())))
                         Name_for_dE = self.Table.item(index_,6).text()
@@ -1415,10 +1490,10 @@ class MainWindow(QtWidgets.QMainWindow):
                             self.paramNames +=[Name_for_dE,'delta('+Name_for_dE+')']
                         elif State_for_dE.currentText() == 'set':
                             setattr(self.fitParams,Name_for_dE,larchfit.param(float(Value_for_dE)))
-                            self.paramNames +=[Name_for_dE]
+                            self.paramNames +=[Name_for_dE,'delta('+Name_for_dE+')']
                         elif State_for_dE.currentText() == 'def':
                             setattr(self.fitParams,Name_for_dE,larchfit.param(expr=Value_for_dE))
-                            self.paramNames +=[Name_for_dE]
+                            self.paramNames +=[Name_for_dE,'delta('+Name_for_dE+')']
                         Name_for_dR = self.Table.item(index_,9).text()
                         self.params_for_dR.append(Name_for_dR)
                         State_for_dR = self.Table.cellWidget(index_,10)
@@ -1428,10 +1503,10 @@ class MainWindow(QtWidgets.QMainWindow):
                             self.paramNames +=[Name_for_dR,'delta('+Name_for_dR+')']
                         elif State_for_dR.currentText() == 'set':
                             setattr(self.fitParams,Name_for_dR,larchfit.param(float(Value_for_dR)))
-                            self.paramNames +=[Name_for_dR]
+                            self.paramNames +=[Name_for_dR,'delta('+Name_for_dR+')']
                         elif State_for_dR.currentText() == 'def':
                             setattr(self.fitParams,Name_for_dR,larchfit.param(expr=Value_for_dR))
-                            self.paramNames +=[Name_for_dR]
+                            self.paramNames +=[Name_for_dR,'delta('+Name_for_dR+')']
                         Name_for_ss = self.Table.item(index_,12).text()
                         self.params_for_ss.append(Name_for_ss)
                         State_for_ss = self.Table.cellWidget(index_,13)
@@ -1441,10 +1516,10 @@ class MainWindow(QtWidgets.QMainWindow):
                             self.paramNames +=[Name_for_ss,'delta('+Name_for_ss+')']
                         elif State_for_ss.currentText() == 'set':
                             setattr(self.fitParams,Name_for_ss,larchfit.param(float(Value_for_ss)))
-                            self.paramNames +=[Name_for_ss]
+                            self.paramNames +=[Name_for_ss,'delta('+Name_for_ss+')']
                         elif State_for_ss.currentText() == 'def':
                             setattr(self.fitParams,Name_for_ss,larchfit.param(expr=Value_for_ss))
-                            self.paramNames +=[Name_for_ss]
+                            self.paramNames +=[Name_for_ss,'delta('+Name_for_ss+')']
                         Name_for_C3 = self.Table.item(index_, 15).text()
                         self.params_for_C3.append(Name_for_C3)
                         State_for_C3 = self.Table.cellWidget(index_, 16)
@@ -1454,10 +1529,10 @@ class MainWindow(QtWidgets.QMainWindow):
                             self.paramNames += [Name_for_C3, 'delta(' + Name_for_C3 + ')']
                         elif State_for_C3.currentText() == 'set':
                             setattr(self.fitParams, Name_for_C3, larchfit.param(float(Value_for_C3)))
-                            self.paramNames += [Name_for_C3]
+                            self.paramNames += [Name_for_C3, 'delta(' + Name_for_C3 + ')']
                         elif State_for_C3.currentText() == 'def':
                             setattr(self.fitParams, Name_for_C3, larchfit.param(expr=Value_for_C3))
-                            self.paramNames += [Name_for_C3]
+                            self.paramNames += [Name_for_C3, 'delta(' + Name_for_C3 + ')']
                         path.s02 = Name_for_N+'*'+'s0_2'+'/'+'degen_path_'+str(index_)
                         path.e0 = Name_for_dE
                         path.sigma2 = Name_for_ss
