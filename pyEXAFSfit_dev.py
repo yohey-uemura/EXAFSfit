@@ -29,24 +29,16 @@ from collections import OrderedDict
 import Test_re as readFEFF
 
 from PySide2 import QtCore, QtWidgets, QtGui
-if sys.platform =='win32':
-    from UI_EXAFSfit_wTable_win import Ui_MainWindow
-    from dialog_Fit_win import Ui_Dialog
-    from dialog_FEFF import Ui_Dialog as Ui_FEFF
-    from dialog_multiFit_win import Ui_Dialog as Ui_multifit
-    from UI_tableview import Ui_Form as ui_tableview
-    from dialog_Text import Ui_Dialog as ui_Text
-else:
-    from UI_EXAFSfit_wTable import Ui_MainWindow
-    from dialog_Fit import Ui_Dialog
-    from dialog_FEFF import Ui_Dialog as Ui_FEFF
-    from dialog_multiFit import Ui_Dialog as Ui_multifit
-    from UI_tableview import Ui_Form as ui_tableview
-    from dialog_Text import Ui_Dialog as ui_Text
+from UI_EXAFSfit_wTable import Ui_MainWindow
+from dialog_Fit import Ui_Dialog
+from dialog_FEFF import Ui_Dialog as Ui_FEFF
+from dialog_multiFit import Ui_Dialog as Ui_multifit
+from UI_tableview import Ui_Form as ui_tableview
+from dialog_Text import Ui_Dialog as ui_Text
 
 import use_larch as LarchF
 import larch
-from larch_plugins.xafs import autobk, xftf, xftr, feffit
+from larch_plugins.xafs import autobk, xftf, xftr, feffit, _ff2chi, feffrunner
 from larch_plugins.xafs.feffit import feffit_transform, feffit_dataset, feffit_report
 from larch_plugins.xafs.feffdat import feffpath
 from larch_plugins.io import read_ascii
@@ -366,6 +358,135 @@ class MainWindow(QtWidgets.QMainWindow):
             #finfo.path()
             return files, finfo.path()
 
+        def plot_ModelEXAFS(PlotSpace,ax,canvas):
+            fitParams = larch_builtins._group(self.mylarch)
+            xas = larch_builtins._group(self.mylarch)
+            fitParams.s0_2 = larchfit.param(self.fit_dialog.doubleSpinBox.value())
+            if self.fit_dialog.cB_use_anotherParams.isChecked() and self.fit_dialog.lE_params.text() != '':
+                tlist = self.fit_dialog.lE_params.text().split(';')
+                for term in tlist:
+                    t_array = term.split('=')
+                    param_name = t_array[0].replace(" ", "")
+                    param_condition = t_array[1][1:-1].replace(" ", "").replace('(', "").replace(')', "").split(',')
+                    setattr(fitParams, param_name, larchfit.guess(float(param_condition[0])))
+            # self.paramNames = []
+            # self.params_for_N = []
+            # self.params_for_dE = []
+            # self.params_for_dR = []
+            # self.params_for_ss = []
+            # self.params_for_C3 = []
+            feffpathlist = []
+            for cB in self.GroupCheckBox.buttons():
+                if cB.isChecked():
+                    index_ = self.GroupCheckBox.buttons().index(cB)
+                    feffinp = params.FitConditions['FEFF file'][index_]
+                    path = feffpath(feffinp, _larch=self.mylarch)
+                    # s02 = Name_for_N+'*'+'s0_2', e0 = Name_for_dE,sigma2 = Name_for_ss, deltar  = Name_for_dR,
+                    Name_for_N = self.Table.item(index_, 3).text()
+                    State_for_N = self.Table.cellWidget(index_, 4)
+                    Value_for_N = self.Table.item(index_, 5).text()
+                    if State_for_N.currentText() == 'def':
+                        setattr(fitParams, Name_for_N, larchfit.param(expr=Value_for_N))
+                    else:
+                        setattr(fitParams, Name_for_N, larchfit.param(float(Value_for_N)))
+
+                    setattr(fitParams, 'degen_path_' + str(index_), path.degen)
+                    # setattr(self.fitParams,'net_'+Name_for_N,larchfit.param(expr=Value_for_N+'*'+str(self.fit_dialog.doubleSpinBox.value())))
+                    Name_for_dE = self.Table.item(index_, 6).text()
+                    State_for_dE = self.Table.cellWidget(index_, 7)
+                    Value_for_dE = self.Table.item(index_, 8).text()
+                    if State_for_dE.currentText() == 'def':
+                        setattr(fitParams, Name_for_dE, larchfit.param(expr=Value_for_dE))
+                    else:
+                        setattr(fitParams, Name_for_dE, larchfit.param(float(Value_for_dE)))
+                    Name_for_dR = self.Table.item(index_, 9).text()
+                    State_for_dR = self.Table.cellWidget(index_, 10)
+                    Value_for_dR = self.Table.item(index_, 11).text()
+                    if State_for_dR.currentText() == 'def':
+                        setattr(fitParams, Name_for_dR, larchfit.param(expr=Value_for_dR))
+                    else:
+                        setattr(fitParams, Name_for_dR, larchfit.param(float(Value_for_dR)))
+                    Name_for_ss = self.Table.item(index_, 12).text()
+                    State_for_ss = self.Table.cellWidget(index_, 13)
+                    Value_for_ss = self.Table.item(index_, 14).text()
+                    if State_for_ss.currentText() == 'def':
+                        setattr(fitParams, Name_for_ss, larchfit.param(expr=Value_for_ss))
+                    else:
+                        setattr(fitParams, Name_for_ss, larchfit.param(float(Value_for_ss)))
+                    Name_for_C3 = self.Table.item(index_, 15).text()
+                    State_for_C3 = self.Table.cellWidget(index_, 16)
+                    Value_for_C3 = self.Table.item(index_, 17).text()
+                    if State_for_C3.currentText() == 'def':
+                        setattr(fitParams, Name_for_C3, larchfit.param(expr=Value_for_C3))
+                    else:
+                        setattr(fitParams, Name_for_C3, larchfit.param(float(Value_for_C3)))
+                    path.s02 = Name_for_N + '*' + 's0_2' + '/' + 'degen_path_' + str(index_)
+                    path.e0 = Name_for_dE
+                    path.sigma2 = Name_for_ss
+                    path.deltar = Name_for_dR
+                    path.third = Name_for_C3
+                    feffpathlist.append(path)
+            FeffitTransform = feffit_transform(fitspace=self.u.comboBox_3.currentText(),
+                                                    kmin=self.u.dSB_klow.value(),
+                                                    kmax=self.u.dSB_khigh.value(),
+                                                    kw=float(self.u.comboBox.currentText()),
+                                                    dk=self.u.dB_window_k.value(),
+                                                    window=self.u.comboBox_2.currentText(),
+                                                    rmin=self.u.dSB_rlow.value(),
+                                                    rmax=self.u.dSB_rhigh.value(),
+                                                    _larch=self.mylarch,
+                                                    dr=self.u.dB_window_r.value())
+            xafsdat = larch_builtins._group(self.mylarch)
+            key = self.exafs_cB.buttons()[0].text()
+            xafsdat.k = params.d_chis[key][0][:]
+            xafsdat.chi = params.d_chis[key][1][:]
+            dset = feffit_dataset(data=xafsdat, pathlist=feffpathlist, transform=FeffitTransform,
+                                  _larch=self.mylarch)
+            out = feffit(fitParams, dset, _larch=self.mylarch)
+            # _ff2chi(feffpathlist,fitParams,xas,_larch=self.mylarch)
+
+            if PlotSpace == 'k':
+                k_fit = dset.model.k
+                chi_fit = dset.model.chi
+                ax.plot(k_fit, chi_fit * k_fit ** float(self.u.comboBox.currentText()),
+                        'r--', label='model',
+                        linewidth=1)
+            elif PlotSpace == 'r':
+                k_fit = dset.model.k
+                chi_fit = dset.model.chi
+                wind = self.u.comboBox_2.currentText()
+                dk_wind = self.u.dB_window_k.value()
+                r_fit, chir_fit, chir_mag_fit, chir_im_fit = LarchF.calcFT(k_fit, chi_fit,
+                                                                           float(self.u.comboBox.currentText()),
+                                                                           self.u.dSB_klow.value(),
+                                                                           self.u.dSB_khigh.value(),
+                                                                           wind, dk_wind)
+                ax.plot(r_fit, chir_mag_fit, 'r--', label='model: mag', linewidth=2)
+                ax.plot(r_fit, chir_im_fit, 'm--', label='model: img', linewidth=2)
+            elif PlotSpace == 'q':
+                k_fit = dset.model.k
+                chi_fit = dset.model.chi
+                wind = self.u.comboBox_2.currentText()
+                dk_wind = self.u.dB_window_k.value()
+                dr_wind = self.u.dB_window_r.value()
+                r_fit, chir_fit, chir_mag_fit, chir_im_fit = LarchF.calcFT(k_fit, chi_fit,
+                                                                           float(self.u.comboBox.currentText()),
+                                                                           self.u.dSB_klow.value(),
+                                                                           self.u.dSB_khigh.value(), wind,
+                                                                           dk_wind)
+                q_fit, chiq_fit = LarchF.calc_rFT(r_fit, chir_fit, self.u.dSB_rlow.value(),
+                                                  self.u.dSB_rhigh.value(), self.u.dSB_khigh.value() + 0.5, wind,
+                                                  dr_wind)
+                ax.plot(q_fit, chiq_fit, 'r--', label='model', linewidth=2)
+            canvas.draw()
+            # else:
+            #     msgBox = QtWidgets.QMessageBox()
+            #     msgBox.setText("The fitting results doesn't exist in this file.\nPlease choose another file")
+            #     msgBox.exec_()
+
+
+
+
         def plot_fitResult(rB,cB,PlotSpace,ax,canvas):
             print ("L321")
             relust_file = rB.objectName()
@@ -383,7 +504,9 @@ class MainWindow(QtWidgets.QMainWindow):
                         chi_fit = result[cB.text()]['chi_fit'][:,1]
                         wind = self.u.comboBox_2.currentText()
                         dk_wind = self.u.dB_window_k.value()
-                        r_fit, chir_fit, chir_mag_fit, chir_im_fit = LarchF.calcFT(k_fit,chi_fit,float(self.u.comboBox.currentText()),self.u.dSB_klow.value(),self.u.dSB_khigh.value(),wind,dk_wind)
+                        r_fit, chir_fit, chir_mag_fit, chir_im_fit = LarchF.calcFT(k_fit,chi_fit,float(self.u.comboBox.currentText()),
+                                                                                   self.u.dSB_klow.value(),self.u.dSB_khigh.value(),
+                                                                                   wind,dk_wind)
                         # r_fit = result[cB.text()]['chir_fit'][:,0]
                         # chir_mag = result[cB.text()]['chir_fit'][:,1]
                         # chir_im = result[cB.text()]['chir_fit'][:,2]
@@ -437,6 +560,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.ax.plot(x,FTw*amp,color='g',linewidth=2)
                 if self.u.checkBox_4.isChecked() and len(params.results_rb.buttons()) != 0:
                     plot_fitResult(params.results_rb.checkedButton(),cB,'k',self.ax,self.canvas)
+                if self.u.cB_plotModel.isChecked() and not self.u.checkBox_4.isChecked():
+                    plot_ModelEXAFS('k',self.ax,self.canvas)
             elif self.u.radioButton_2.isChecked():
                 if integer == -1:
                     self.ax = refresh_subPlot(self.fig,'$r / \AA$','FT['+str_ylabel+']')
@@ -456,7 +581,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.ax.plot(x, FTw * amp, color='g', linewidth=2)
                 if self.u.checkBox_4.isChecked() and len(params.results_rb.buttons()) != 0:
                     plot_fitResult(params.results_rb.checkedButton(),cB,'r',self.ax,self.canvas)
-                #self.canvas.draw()
+                if  self.u.cB_plotModel.isChecked() and not self.u.checkBox_4.isChecked():
+                    plot_ModelEXAFS('r', self.ax, self.canvas)
             elif self.u.radioButton_3.isChecked():
                 if integer == -1:
                     self.ax = refresh_subPlot(self.fig,'$q / \AA^{-1}$',str_ylabel.replace('k','q'))
@@ -475,6 +601,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.ax.plot(x, FTw * amp, color='g', linewidth=2)
                 if self.u.checkBox_4.isChecked():
                     plot_fitResult(params.results_rb.checkedButton(),cB,'q',self.ax,self.canvas)
+                if self.u.cB_plotModel.isChecked() and not self.u.checkBox_4.isChecked():
+                    plot_ModelEXAFS('q', self.ax, self.canvas)
             self.ax.legend(loc=1)
             self.canvas.draw()
 
@@ -525,7 +653,9 @@ class MainWindow(QtWidgets.QMainWindow):
                         wind = self.u.comboBox_2.currentText()
                         dk_wind = self.u.dB_window_k.value()
                         dr_wind = self.u.dB_window_r.value()
-                        r, chir, chir_mag, chir_im = LarchF.calcFT(k,chi,float(self.u.comboBox.currentText()),self.u.dSB_klow.value(),self.u.dSB_khigh.value(),wind,dk_wind)
+                        r, chir, chir_mag, chir_im = LarchF.calcFT(k,chi,float(self.u.comboBox.currentText()),
+                                                                   self.u.dSB_klow.value(),self.u.dSB_khigh.value(),
+                                                                   wind,dk_wind)
                         q, chi_q = LarchF.calc_rFT(r,chir,self.u.dSB_rlow.value(),self.u.dSB_rhigh.value(),self.u.dSB_khigh.value()+2.0,wind,dr_wind)
                         index_ = self.exafs_cB.buttons().index(cB)
                         self.ax.plot(q, chi_q,color=params.colors[index_])
@@ -598,9 +728,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 params.feffdir = os.path.dirname(os.path.abspath(file[0]))
                 self.FEFF_dialog.textBrowser_2.append(params.feffdir)
                 self.FEFF_dialog.textBrowser.clear()
-                str_ = "{:16s}{:16s}{:16s}{:16s}".format('PATH:',  'Route:',  'Distance:', 'Relative AMP', 'Degeneracy')
+                str_ = "{:16s}{:16s}{:16s}{:16s}{:16s}".format('PATH:',  'Route:',  'Distance:', 'Relative AMP', 'Degeneracy')
                 self.FEFF_dialog.textBrowser.append(str_)
                 self.dialog_f.show()
+                if not os.path.isfile(os.path.dirname(file[0])+'/paths.dat'):
+                    rFEFF = feffrunner.feffrunner(file[0],_larch=self.mylarch)
+                    rFEFF.run()
                 txt_array = readFEFF.read_FEFF(file[0])
                 list = []
                 for key in natsort.natsorted(txt_array.keys()):
@@ -832,56 +965,18 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.u.tB_xaxis.append(absPATH)
             child_plot_paramResult()
 
-        def SaveConditions():
+        def execSaveConditions():
             dat_dir = home_dir.homePath()
             if params.dir == "":
-               pass
+                pass
             else:
                 dat_dir = params.dir
             FO_dialog = QtWidgets.QFileDialog(self)
-            file = FO_dialog.getSaveFileName(parent=None, caption='set output file name', filter='YAML File(*.yaml)',dir=dat_dir)
+            file = FO_dialog.getSaveFileName(parent=None, caption='set output file name',
+                                             filter='YAML File(*.yaml)',
+                                             dir=dat_dir)
             if file[0] !='':
-                # f = open(file[0],'w')
-                Dict={}
-                Dict['S02'] = self.fit_dialog.doubleSpinBox.value()
-                Dict['extra_param'] = self.fit_dialog.lE_params.text()
-                print (self.GroupCheckBox.buttons())
-                for cB in self.GroupCheckBox.buttons():
-                    if cB.isChecked():
-                        index_ = self.GroupCheckBox.buttons().index(cB)
-                        Dict['path'+str(index_+1)] = {}
-                        Dict['path'+str(index_+1)]['discription']=self.Table.item(index_,2).text()
-                        Dict['path'+str(index_+1)]['N'] = {'name':self.Table.item(index_,3).text(),
-                                                           'state':self.Table.cellWidget(index_,4).currentText(),
-                                                           'value':self.Table.item(index_,5).text()}
-                        Dict['path'+str(index_+1)]['dE'] = {'name':self.Table.item(index_,6).text(),
-                                                           'state':self.Table.cellWidget(index_,7).currentText(),
-                                                           'value':self.Table.item(index_,8).text()}
-                        Dict['path'+str(index_+1)]['dR'] = {'name':self.Table.item(index_,9).text(),
-                                                           'state':self.Table.cellWidget(index_,10).currentText(),
-                                                           'value':self.Table.item(index_,11).text()}
-                        Dict['path'+str(index_+1)]['ss'] = {'name':self.Table.item(index_,12).text(),
-                                                           'state':self.Table.cellWidget(index_,13).currentText(),
-                                                           'value':self.Table.item(index_,14).text()}
-                        Dict['path' + str(index_ + 1)]['C3'] = {'name': self.Table.item(index_, 15).text(),
-                                                                'state': self.Table.cellWidget(index_,16).currentText(),
-                                                                'value': self.Table.item(index_, 17).text()}
-                        Dict['path'+str(index_+1)]['path_to_feff'] = params.FitConditions['FEFF file'][index_]
-
-                Dict['dSB_klow'] = self.u.dSB_klow.value()
-                Dict['dSB_khigh'] = self.u.dSB_khigh.value()
-                Dict['dSB_rlow'] = self.u.dSB_rlow.value()
-                Dict['dSB_rhigh'] = self.u.dSB_rhigh.value()
-                Dict['plotSpace'] = self.groupButton_RB.checkedButton().text()
-                Dict['fitSpace'] = self.u.comboBox_3.currentText()
-                Dict['kweight'] = self.u.comboBox.currentText()
-                Dict['window'] = self.u.comboBox_2.currentText()
-                Dict['dB_window_k'] = self.u.dB_window_k.value()
-                Dict['dB_window_r'] = self.u.dB_window_r.value()
-                print (yaml.safe_dump(Dict,default_flow_style=False))
-                f = open(file[0],'w')
-                f.write(yaml.safe_dump(Dict,default_flow_style=False))
-                f.close()
+                self.SaveConditions(file[0])
 
 
         def reloadConditions():
@@ -946,6 +1041,8 @@ class MainWindow(QtWidgets.QMainWindow):
         for sB in ['dSB_klow','dSB_klow','dSB_rlow','dSB_rhigh']:
             getattr(self.u,sB).valueChanged.connect(calc_freeParameters)
         self.u.checkBox_4.toggled.connect(plotConditionChanged)
+        self.u.cB_plotModel.toggled.connect(plotConditionChanged)
+        self.u.pB_refresh.clicked.connect(plotConditionChanged)
         self.u.comboBox_3.currentIndexChanged.connect(change_plot_space)
         self.u.checkBox_2.clicked.connect(show_hide_tableview)
         self.u.pushButton.clicked.connect(read_chi_files)
@@ -963,7 +1060,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.u.cB_multifit.clicked.connect(use_multifit)
         self.multifit_dialog.pushButton_2.clicked.connect(openOutPutFile)
         self.multifit_dialog.pushButton_3.clicked.connect(self.DoAction)
-        self.fit_dialog.pB_savecondtion.clicked.connect(SaveConditions)
+        self.fit_dialog.pB_savecondtion.clicked.connect(execSaveConditions)
         self.fit_dialog.pB_reload.clicked.connect(reloadConditions)
         self.uiTableView.pushButton.clicked.connect(self.tableview.hide)
         self.dialog.show()
@@ -973,7 +1070,47 @@ class MainWindow(QtWidgets.QMainWindow):
     #     if event.button() == QtCore.Qt.RightButton:
     #         print ("Hello")
     #         print (self.Table.underMouse())
+    def SaveConditions(self, fname):
+        Dict = {}
+        Dict['S02'] = self.fit_dialog.doubleSpinBox.value()
+        Dict['extra_param'] = self.fit_dialog.lE_params.text()
+        print(self.GroupCheckBox.buttons())
+        for cB in self.GroupCheckBox.buttons():
+            if cB.isChecked():
+                index_ = self.GroupCheckBox.buttons().index(cB)
+                Dict['path' + str(index_ + 1)] = {}
+                Dict['path' + str(index_ + 1)]['discription'] = self.Table.item(index_, 2).text()
+                Dict['path' + str(index_ + 1)]['N'] = {'name': self.Table.item(index_, 3).text(),
+                                                       'state': self.Table.cellWidget(index_, 4).currentText(),
+                                                       'value': self.Table.item(index_, 5).text()}
+                Dict['path' + str(index_ + 1)]['dE'] = {'name': self.Table.item(index_, 6).text(),
+                                                        'state': self.Table.cellWidget(index_, 7).currentText(),
+                                                        'value': self.Table.item(index_, 8).text()}
+                Dict['path' + str(index_ + 1)]['dR'] = {'name': self.Table.item(index_, 9).text(),
+                                                        'state': self.Table.cellWidget(index_, 10).currentText(),
+                                                        'value': self.Table.item(index_, 11).text()}
+                Dict['path' + str(index_ + 1)]['ss'] = {'name': self.Table.item(index_, 12).text(),
+                                                        'state': self.Table.cellWidget(index_, 13).currentText(),
+                                                        'value': self.Table.item(index_, 14).text()}
+                Dict['path' + str(index_ + 1)]['C3'] = {'name': self.Table.item(index_, 15).text(),
+                                                        'state': self.Table.cellWidget(index_, 16).currentText(),
+                                                        'value': self.Table.item(index_, 17).text()}
+                Dict['path' + str(index_ + 1)]['path_to_feff'] = params.FitConditions['FEFF file'][index_]
 
+        Dict['dSB_klow'] = self.u.dSB_klow.value()
+        Dict['dSB_khigh'] = self.u.dSB_khigh.value()
+        Dict['dSB_rlow'] = self.u.dSB_rlow.value()
+        Dict['dSB_rhigh'] = self.u.dSB_rhigh.value()
+        Dict['plotSpace'] = self.groupButton_RB.checkedButton().text()
+        Dict['fitSpace'] = self.u.comboBox_3.currentText()
+        Dict['kweight'] = self.u.comboBox.currentText()
+        Dict['window'] = self.u.comboBox_2.currentText()
+        Dict['dB_window_k'] = self.u.dB_window_k.value()
+        Dict['dB_window_r'] = self.u.dB_window_r.value()
+        print(yaml.safe_dump(Dict, default_flow_style=False))
+        f = open(fname, 'w')
+        f.write(yaml.safe_dump(Dict, default_flow_style=False))
+        f.close()
 
     def timerEvent(self,e):
         def setFigure(widget,str_xlabel,str_ylabel):
@@ -1234,6 +1371,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 logfile.close()
                 self.u.progressBar.setValue(self.u.progressBar.value()+1)
                 self.hdf5.create_group(key)
+                self.hdf5.create_dataset('/'+key+':log',data=np.string_(line))
                 self.hdf5.create_dataset('/'+key+'/chi_dat',data=np.array([dset.data.k,dset.data.chi]).T)
                 self.hdf5.create_dataset('/'+key+'/chi_fit',data=np.array([dset.model.k,dset.model.chi]).T)
                 self.hdf5.create_dataset('/'+key+'/chir_dat',data=np.array([dset.data.r,dset.data.chir_mag,dset.data.chir_im]).T)
@@ -1592,6 +1730,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 if os.path.isfile(self.path_to_log+'result_'+os.path.basename(self.u.textBrowser.toPlainText()).replace(self.ext,'.h5')):
                     os.rename(self.path_to_log+'result_'+os.path.basename(self.u.textBrowser.toPlainText()).replace(self.ext,'.h5'),self.path_to_log+'result_'+os.path.basename(self.u.textBrowser.toPlainText()).replace(self.ext,'.h5~'))
                 self.hdf5 = h5py.File(self.path_to_log+'result_'+os.path.basename(self.u.textBrowser.toPlainText()).replace(self.ext,'.h5'),'w')
+                self.SaveConditions(self.path_to_log+os.path.basename(self.u.textBrowser.toPlainText()).replace(self.ext,'.yaml'))
                 self.params_guess=[]
                 self.params_set=[]
                 self.params_def =[]

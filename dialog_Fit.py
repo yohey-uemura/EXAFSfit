@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'dialog_Fit.ui'
 #
-# Created: Fri Jun  8 19:24:51 2018
+# Created: Thu Jul 19 19:30:54 2018
 #      by: pyside2-uic 2.0.0 running on PySide2 5.6.0~a1
 #
 # WARNING! All changes made in this file will be lost!
@@ -70,5 +70,5 @@ class Ui_Dialog(object):
         self.pB_reload.setText(QtWidgets.QApplication.translate("Dialog", "Reload", None, -1))
         self.pB_savecondtion.setText(QtWidgets.QApplication.translate("Dialog", "Save conditions", None, -1))
         self.cB_use_anotherParams.setText(QtWidgets.QApplication.translate("Dialog", "Use another parameters", None, -1))
-        self.lE_params.setToolTip(QtWidgets.QApplication.translate("Dialog", "<html><head/><body><p><span style=\" font-size:10pt;\">Write another parameters for fitting.</span></p><p><span style=\" font-size:10pt;\">Ex.1: parameter name: dR, initial value: 0.05, status[guess or set]: guess</span></p><p><span style=\" font-size:10pt;\">=&gt; \'dR\'=[0.05, \'guess\'] (use quotation mark for strings. Separate each parameters with \';\')</span></p><p><span style=\" font-size:10pt;\">Ex.2: parameter name: alpha, initial value: 0.05, status[guess or set]: guess, \'alpha\' should be between 0 and 1</span></p><p><span style=\" font-size:10pt;\">=&gt; \'dR\'=[0.05, \'guess\', (0:1)] (use quotation mark for strings. Separate each parameters with \';\')</span><br/></p></body></html>", None, -1))
+        self.lE_params.setToolTip(QtWidgets.QApplication.translate("Dialog", "<html><head/><body><p><span style=\" font-size:10pt;\">Write another parameters for fitting.</span></p><p><span style=\" font-size:10pt;\">Ex.1: parameter name: dR, initial value: 0.05, status[guess or set]: guess</span></p><p><span style=\" font-size:10pt;\">=&gt; dR=[0.05, guess] (use quotation mark for strings. Separate each parameters with \';\')</span></p><p><span style=\" font-size:10pt;\">Ex.2: parameter name: alpha, initial value: 0.05, status[guess or set]: guess, \'alpha\' should be between 0 and 1</span></p><p><span style=\" font-size:10pt;\">=&gt; dR=[0.05, guess, (0:1)] (use quotation mark for strings. Separate each parameters with \';\')</span><br/></p></body></html>", None, -1))
 

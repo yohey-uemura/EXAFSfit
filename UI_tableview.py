@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'UI_tableview.ui'
 #
-# Created: Fri Jun  8 19:24:50 2018
+# Created: Thu Jul 19 19:30:54 2018
 #      by: pyside2-uic 2.0.0 running on PySide2 5.6.0~a1
 #
 # WARNING! All changes made in this file will be lost!
