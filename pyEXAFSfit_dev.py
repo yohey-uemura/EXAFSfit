@@ -12,7 +12,7 @@ import collections
 import h5py
 import matplotlib
 
-
+#matplotlib.rcParams['backend.qt5'] = 'PySide2'
 matplotlib.use('Qt5Agg')
 matplotlib.rcParams['backend.qt5'] = 'PySide2'
 
@@ -22,6 +22,7 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
+
 import numpy as np
 import pandas as pd
 import natsort
@@ -29,8 +30,14 @@ from collections import OrderedDict
 import Test_re as readFEFF
 
 from PySide2 import QtCore, QtWidgets, QtGui
-from UI_EXAFSfit_wTable import Ui_MainWindow
-from dialog_Fit import Ui_Dialog
+
+if sys.platform =='win32':
+    from UI_EXAFSfit_wTable_win import Ui_MainWindow
+    from dialog_Fit_win import Ui_Dialog
+else:
+    from UI_EXAFSfit_wTable import Ui_MainWindow
+    from dialog_Fit import Ui_Dialog
+
 from dialog_FEFF import Ui_Dialog as Ui_FEFF
 from dialog_multiFit import Ui_Dialog as Ui_multifit
 from UI_tableview import Ui_Form as ui_tableview
@@ -104,7 +111,7 @@ class ItemTableModel(QtCore.QAbstractTableModel):
         return len(self.header)
 
 class MainWindow(QtWidgets.QMainWindow):
-
+    wSignal = QtCore.Signal()
     def __init__(self, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent)
         self.u = Ui_MainWindow()
@@ -151,6 +158,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.u.pushButton_3.setEnabled(False)
         self.u.cB_multifit.setEnabled(False)
         self.u.pB_setXaxis.setEnabled(False)
+
         
 
         @QtCore.Slot()
@@ -316,7 +324,8 @@ class MainWindow(QtWidgets.QMainWindow):
             ax.set_xlabel(str_xlabel)
             ax.set_ylabel(str_ylabel)
             canvas = FigureCanvas(fig)
-            navibar = NavigationToolbar(canvas, widget)
+            #navibar = NavigationToolbar(canvas, widget)
+            navibar = NavigationToolbar(canvas,parent=widget)
             grid.addWidget(canvas, 0, 0)
             grid.addWidget(navibar)
             return fig, ax, canvas
@@ -342,9 +351,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 dat_dir = dir
             FO_dialog = QtWidgets.QFileDialog(self)
             file = FO_dialog.getOpenFileName(parent=None, caption=str_caption, filter=str_filter,dir=dat_dir)
-            finfo = QtCore.QFileInfo(file[0])
+            #finfo = QtCore.QFileInfo(file[0])
             #finfo.path()
-            return file, finfo.absoluteFilePath()
+            return file, os.path.abspath(file[0])
 
         def dialog_for_OpenFiles(dir,str_caption,str_filter):
             dat_dir = home_dir.homePath()
@@ -353,10 +362,14 @@ class MainWindow(QtWidgets.QMainWindow):
             elif dir != "":
                 dat_dir = dir
             FO_dialog = QtWidgets.QFileDialog(self)
+            #print ("FileDialog:L364")
             files = FO_dialog.getOpenFileNames(parent=None, caption=str_caption, filter=str_filter,dir=dat_dir)
-            finfo = QtCore.QFileInfo(files[0][0])
+            #print ("FileDialog:L364")
+            print (files)
+            #finfo = QtCore.QFileInfo(files[0][0])
+            ######finf crush#####
             #finfo.path()
-            return files, finfo.path()
+            return files, os.path.dirname(files[0][0])
 
         def plot_ModelEXAFS(PlotSpace,ax,canvas):
             fitParams = larch_builtins._group(self.mylarch)
@@ -537,12 +550,14 @@ class MainWindow(QtWidgets.QMainWindow):
         def plot_each(cB,integer):
             #print cB
             k, chi = params.d_chis[cB.text()]
+            #print (k)
             wind = self.u.comboBox_2.currentText()
             dk_wind = self.u.dB_window_k.value()
             dr_wind = self.u.dB_window_r.value()
             r, chir, chir_mag, chir_im = LarchF.calcFT(k,chi,float(self.u.comboBox.currentText()),self.u.dSB_klow.value(),self.u.dSB_khigh.value(),wind,dk_wind)
             q, chi_q = LarchF.calc_rFT(r,chir,self.u.dSB_rlow.value(),self.u.dSB_rhigh.value(),self.u.dSB_khigh.value()+2.0,wind,dr_wind)
             str_ylabel = '$k^{'+self.u.comboBox.currentText()+'}\chi$(k)'
+            #print ("L558")
             if self.u.radioButton.isChecked():
                 if integer == -1:
                     self.ax= refresh_subPlot(self.fig,'$k / \AA^{-1}$',str_ylabel)
@@ -605,6 +620,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     plot_ModelEXAFS('q', self.ax, self.canvas)
             self.ax.legend(loc=1)
             self.canvas.draw()
+            
 
         def plot_checked(integer):
             str_ylabel = '$k^{'+self.u.comboBox.currentText()+'}\chi$(k)'
@@ -675,27 +691,34 @@ class MainWindow(QtWidgets.QMainWindow):
             files, params.dir = dialog_for_OpenFiles(params.dir,'Open chi files',"chi files(*.xi *.chi *chik *.rex)")
             i = 0
             for f in natsort.natsorted(files[0]):
-                finfo = QtCore.QFileInfo(f)
-                cb = QtWidgets.QCheckBox(str(i+1)+':'+finfo.fileName())
-                params.d_chis[str(i+1)+':'+finfo.fileName()] = LarchF.read_chi_file(finfo.absoluteFilePath())
-                cb.setObjectName(finfo.absoluteFilePath())
+                #finfo = QtCore.QFileInfo(f)
+                cb = QtWidgets.QCheckBox(str(i+1)+':'+os.path.basename(f))
+                params.d_chis[str(i+1)+':'+os.path.basename(f)] = LarchF.read_chi_file(os.path.abspath(f))
+                cb.setObjectName(os.path.abspath(f))
                 style = "color: "+params.colors[i%len(params.colors)]
                 cb.setStyleSheet(style)
                 self.exafs_cB.addButton(cb)
                 self.layout.addWidget(cb)
                 i+=1
             self.exafs_cB.buttons()[0].setCheckState(QtCore.Qt.Checked)
+            # print("L700")
             checkstate()
-            if self.u.checkBox_3.isChecked():
-                plot_each(self.exafs_cB.checkedButton(),-1)
-            else:
-                plot_checked(-1)
+            self.wSignal.emit()
+            #self.u.pB_refresh.click()
+            # if self.u.checkBox_3.isChecked():
+            #     # print ("L703")
+            #     plot_each(self.exafs_cB.checkedButton(),-1)
+            #     #self.canvas.draw()
+            # else:
+            #     plot_checked(-1)
+            #     #self.canvas.draw()
 
         def change_rb(button):
             if self.u.checkBox_3.isChecked():
                 plot_each(self.exafs_cB.checkedButton(), self.exafs_cB.id(button)) if len(self.exafs_cB.buttons()) !=0 else 0
             else:
                 plot_checked(self.exafs_cB.id(button))  if len(self.exafs_cB.buttons()) !=0 else 0
+
 
         def plotConditionChanged():
             if self.u.checkBox_3.isChecked():
@@ -824,12 +847,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
         def checkstate():
             sign = 0
+            # print ("L840")
             for cB in self.GroupCheckBox.buttons():
                 if params.FitConditions['FEFF file'][self.GroupCheckBox.buttons().index(cB)] != '':
                     sign = 1
                     break
             if self.u.textBrowser.toPlainText() != '' and len(self.exafs_cB.buttons()) != 0 and sign:
                 self.u.pushButton_3.setEnabled(True)
+            #print ("L847")
 
         @QtCore.Slot()
         def pB_set_Enabled(checkbox):
@@ -1063,6 +1088,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.fit_dialog.pB_savecondtion.clicked.connect(execSaveConditions)
         self.fit_dialog.pB_reload.clicked.connect(reloadConditions)
         self.uiTableView.pushButton.clicked.connect(self.tableview.hide)
+        self.wSignal.connect(plotConditionChanged)
         self.dialog.show()
         self.show()
 

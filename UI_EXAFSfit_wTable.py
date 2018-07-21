@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'UI_EXAFSfit_wTable.ui'
 #
-# Created: Thu Jul 19 19:30:54 2018
+# Created: Sun Jul 22 00:53:30 2018
 #      by: pyside2-uic 2.0.0 running on PySide2 5.6.0~a1
 #
 # WARNING! All changes made in this file will be lost!
@@ -230,13 +230,13 @@ class Ui_MainWindow(object):
         self.tabWidgetPage2 = QtWidgets.QWidget()
         self.tabWidgetPage2.setObjectName("tabWidgetPage2")
         self.pB_setXaxis = QtWidgets.QPushButton(self.tabWidgetPage2)
-        self.pB_setXaxis.setGeometry(QtCore.QRect(40, 350, 110, 35))
+        self.pB_setXaxis.setGeometry(QtCore.QRect(40, 400, 110, 35))
         self.pB_setXaxis.setObjectName("pB_setXaxis")
         self.pB_openResult = QtWidgets.QPushButton(self.tabWidgetPage2)
         self.pB_openResult.setGeometry(QtCore.QRect(20, 2, 110, 38))
         self.pB_openResult.setObjectName("pB_openResult")
         self.tB_xaxis = QtWidgets.QTextBrowser(self.tabWidgetPage2)
-        self.tB_xaxis.setGeometry(QtCore.QRect(160, 352, 641, 31))
+        self.tB_xaxis.setGeometry(QtCore.QRect(160, 400, 641, 31))
         self.tB_xaxis.setObjectName("tB_xaxis")
         self.tB_result = QtWidgets.QTextBrowser(self.tabWidgetPage2)
         self.tB_result.setGeometry(QtCore.QRect(140, 5, 531, 31))
@@ -245,7 +245,7 @@ class Ui_MainWindow(object):
         self.combo_fitParam.setGeometry(QtCore.QRect(680, 10, 104, 31))
         self.combo_fitParam.setObjectName("combo_fitParam")
         self.w_fitResult = QtWidgets.QWidget(self.tabWidgetPage2)
-        self.w_fitResult.setGeometry(QtCore.QRect(30, 60, 811, 281))
+        self.w_fitResult.setGeometry(QtCore.QRect(30, 60, 811, 331))
         self.w_fitResult.setObjectName("w_fitResult")
         self.tabWidget.addTab(self.tabWidgetPage2, "")
         self.lcdNumber = QtWidgets.QLCDNumber(self.centralwidget)

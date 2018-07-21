@@ -1,0 +1,57 @@
+*Install Anaconda3.5.0.1	
+*conda install -yc GSECARS xraylarch
+  for mac: xraylarch=0.9.36
+*conda install -c conda-forge pyside2
+*conda install natsort
+
+From native python3
+
+pip install pyside2 (pyside2-5.11)
+pip install matplotlib (matplotlib=2.2.2)
+
+download xraylarch source(ver.0.9.4)
+unzip the downloaded file and cd to the directory
+python setup.py build
+
+#===========================================================================#
+ Note: Some optional Python Packages were not found. Some functionality
+ will not be available without these packages:
+
+     Package Name              Needed for
+     ----------------          ----------------------------------
+     scipy*                    basic analysis => pip install scipy
+     h5py*                      basic analysis => pip install h5py
+     sqlalchemy*                basic analysis => pip install sqlalchemy
+     requests*                  basic analysis => pip install requests
+     psutil*                    basic analysis => pip install psutil
+     peakutils*                 basic analysis => pip install peakutils
+     pillow*                    basic analysis => pip install pillow
+     asteval*                   basic analysis => pip install asteval
+     uncertainties*             basic analysis => pip install unvertainties
+     lmfit*                     basic analysis => pip install lmfit
+     pyyaml*                    basic analysis => pip install pyyaml
+     termcolor*                 basic analysis => pip install termcolor
+     wxPython*                  graphics and plotting => pip install wxpython
+     wxmplot*                   graphics and plotting => pip install wxmplot
+     wxutils*                   graphics and plotting => pip install wxutils
+     pyFAI                     xrd modules
+     PyCifRW                   xrd modules
+     fabio                     xrd modules
+     tomopy                    tomography modules
+     scikit-image              tomography modules
+     pyepics                   connecting to the EPICS control system
+     silx                      reading Spec files
+     scikit-learn              PCA and machine learning
+     nose                      testing tools => pip install nose
+     pytest                    testing tools => pip install pytest
+     ----------------          ----------------------------------
+
+ If you need some of these capabilities, you can install them with
+    `pip install <Package Name>` or `conda install <Package Name>`
+
+ See the Optional Modules section of doc/installation.rst for more details.
+#===========================================================================#
+Install all the packages marked with*
+
+pip install pandas
+pip install natsort
