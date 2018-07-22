@@ -1296,13 +1296,24 @@ class MainWindow(QtWidgets.QMainWindow):
                                             pass
                                     self.Reserver.loc[key,'delta('+term+')'] = float(t_array[1])
                                 else:
+                                    print (str(getattr(self.fitParams,term).uvalue))
                                     t_array = str(getattr(self.fitParams,term).uvalue).split('+/-')
+                                    if 'e' in str(getattr(self.fitParams,term).uvalue):
+                                        t_array0 = str(getattr(self.fitParams,term).uvalue).replace('(',).split(')')
+                                        t_array = [t_array0.split('+/-')[0]+t_array0[1],t_array0.split('+/-')[1]+t_array0[1]]
+                                    
                                     self.Reserver.loc[key,term] = float(t_array[0])
                                     self.Reserver.loc[key,'delta('+term+')'] = float(t_array[1])
                         elif getattr(self.fitParams,term).vary == False:
                             if getattr(self.fitParams,term).expr != None:
                                 str_eqn = getattr(self.fitParams,term).expr
-                                for nval in self.extra_params:
+                                # self.params_for_N = []
+                                # self.params_for_dE = []
+                                # self.params_for_dR = []
+                                # self.params_for_ss = []
+                                # self.params_for_C3 = []
+                                for nval in self.extra_params[:]+self.params_for_N[:]+self.params_for_dE[:]+\
+                                    self.params_for_dR[:]+self.params_for_ss[:]+self.params_for_C3[:]:
                                     if not "delta" in nval:
                                         if getattr(self.fitParams,nval).uvalue is None:
                                             str_eqn = str_eqn.replace(nval,"self.fitParams."+nval+'.value')
@@ -1368,6 +1379,7 @@ class MainWindow(QtWidgets.QMainWindow):
                                         else:
                                             pass
                                 else:
+                                    print (str_eqn)
                                     print (eval(str_eqn))
                                     self.Reserver.loc[key, term] = float(str(eval(str_eqn)).split('+/-')[0])
                                     self.Reserver.loc[key, 'delta(' + term + ')'] = float(str(eval(str_eqn)).split('+/-')[1])
@@ -1620,6 +1632,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.params_for_dR = []
                 self.params_for_ss = []
                 self.params_for_C3 = []
+                if hasattr(self,'mylarch'):
+                    del self.mylarch
+                    self.mylarch = larch.Interpreter(with_plugins=False)
                 for cB in self.GroupCheckBox.buttons():
                     if cB.isChecked():
                         index_ = self.GroupCheckBox.buttons().index(cB)
